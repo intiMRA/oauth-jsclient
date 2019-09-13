@@ -21,7 +21,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static(path.join(__dirname, '/public')));
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 
@@ -53,16 +53,15 @@ app.get('/', function(req, res) {
  * Get the AuthorizeUri
  */
 app.get('/authUri', urlencodedParser, function(req,res) {
-
     oauthClient = new OAuthClient({
-        clientId: req.query.json.clientId,
-        clientSecret: req.query.json.clientSecret,
-        environment: req.query.json.environment,
-        redirectUri: req.query.json.redirectUri
+        clientId: 'ABM90qJ9fSD29O8cGmdymFod6ddcNOhVNQBZTV5stey8feEpOL',
+        clientSecret: 'z7o8Ptm26m10D5x8G9M5FAzxOMcUvO0DGKu2SSf0',
+        environment: 'sandbox',
+        redirectUri: 'http://localhost:8080?action=oauth_callback'
     });
 
-    const authUri = oauthClient.authorizeUri({scope:[OAuthClient.scopes.Accounting],state:'intuit-test'});
-    res.send(authUri);
+    const authUri = oauthClient.authorizeUri({scope:['com.intuit.quickbooks.accounting'],state:'intuit-test'});
+    res.redirect(authUri);
 });
 
 
@@ -70,8 +69,10 @@ app.get('/authUri', urlencodedParser, function(req,res) {
  * Handle the callback to extract the `Auth Code` and exchange them for `Bearer-Tokens`
  */
 app.get('/callback', function(req, res) {
+    let u=new URL('http://localhost:8080'+req.url);
+    console.log("dammmm",u.searchParams.get('url'));
 
-    oauthClient.createToken(req.url)
+    oauthClient.createToken('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer')
        .then(function(authResponse) {
              oauth2_token_json = JSON.stringify(authResponse.getJson(), null,2);
          })
@@ -114,10 +115,10 @@ app.get('/refreshAccessToken', function(req,res){
  */
 app.get('/getCompanyInfo', function(req,res){
 
+    const companyID = req.url;//oauthClient.getToken().realmId;
 
-    const companyID = oauthClient.getToken().realmId;
+    const url = oauthClient.environment === 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
 
-    const url = oauthClient.environment == 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
 
     oauthClient.makeApiCall({url: url + 'v3/company/' + companyID +'/companyinfo/' + companyID})
         .then(function(authResponse){
@@ -145,15 +146,8 @@ app.get('/disconnect', function(req,res){
 /**
  * Start server on HTTP (will use ngrok for HTTPS forwarding)
  */
-const server = app.listen(process.env.PORT || 8000, () => {
-    console.log(`💻 Server listening on port ${server.address().port}`);
-if(!ngrok){
-    redirectUri = `${server.address().port}` + '/callback';
-    console.log(`💳  Step 1 : Paste this URL in your browser : ` + 'http://localhost:' + `${server.address().port}`);
-    console.log('💳  Step 2 : Copy and Paste the clientId and clientSecret from : https://developer.intuit.com')
-    console.log(`💳  Step 3 : Copy Paste this callback URL into redirectURI :` + 'http://localhost:' + `${server.address().port}` + '/callback');
-    console.log(`💻  Step 4 : Make Sure this redirect URI is also listed under the Redirect URIs on your app in : https://developer.intuit.com`);
-}
+const server = app.listen(process.env.PORT || 8080, () => {
+    console.log(`Server listening on port ${server.address().port}!`);
 
 });
 
@@ -163,16 +157,12 @@ if(!ngrok){
 if (ngrok) {
 
     console.log("NGROK Enabled");
-    ngrok.connect({addr: process.env.PORT || 8000}, (err, url) => {
+    ngrok.connect({addr: process.env.PORT || 8080}, (err, url) => {
             if (err) {
                 process.exit(1);
             }
             else {
-                redirectUri = url + '/callback';
-                console.log(`💳 Step 1 : Paste this URL in your browser :  ${url}`);
-                console.log('💳 Step 2 : Copy and Paste the clientId and clientSecret from : https://developer.intuit.com')
-                console.log(`💳 Step 3 : Copy Paste this callback URL into redirectURI :  ${redirectUri}`);
-                console.log(`💻 Step 4 : Make Sure this redirect URI is also listed under the Redirect URIs on your app in : https://developer.intuit.com`);
+                redirectUri = 'http://localhost:8080?action=oauth_callback';
 
             }
         }
