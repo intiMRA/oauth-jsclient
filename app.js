@@ -57,33 +57,32 @@ app.get('/authUri', urlencodedParser, function(req,res) {
         clientId: 'ABM90qJ9fSD29O8cGmdymFod6ddcNOhVNQBZTV5stey8feEpOL',
         clientSecret: 'z7o8Ptm26m10D5x8G9M5FAzxOMcUvO0DGKu2SSf0',
         environment: 'sandbox',
-        redirectUri: 'http://localhost:8080?action=oauth_callback'
+        redirectUri: 'http://localhost:8080/callback'
     });
 
     const authUri = oauthClient.authorizeUri({scope:['com.intuit.quickbooks.accounting'],state:'intuit-test'});
-    res.redirect(authUri);
+    res.send(authUri);
 });
 
 
 /**
  * Handle the callback to extract the `Auth Code` and exchange them for `Bearer-Tokens`
  */
-app.get('/callback', function(req, res) {
-    let u=new URL('http://localhost:8080'+req.url);
-    console.log("dammmm",u.searchParams.get('url'));
+app.get('/callback', function(req, res,next) {
 
-    oauthClient.createToken('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer')
-       .then(function(authResponse) {
-             oauth2_token_json = JSON.stringify(authResponse.getJson(), null,2);
-         })
+    oauthClient.createToken(req.url)
+        .then(function(authResponse) {
+            const oauth2_token_json = JSON.stringify(authResponse.getJson(), null,2);
+            res.redirect("/");
+        })
         .catch(function(e) {
-             console.error(e);
-         });
+            console.error(e);
+            next(e);
+        });
 
-    res.send('');
+
 
 });
-
 /**
  * Display the token : CAUTION : JUST for sample purposes
  */
@@ -115,10 +114,10 @@ app.get('/refreshAccessToken', function(req,res){
  */
 app.get('/getCompanyInfo', function(req,res){
 
-    const companyID = req.url;//oauthClient.getToken().realmId;
+
+    const companyID = oauthClient.getToken().realmId;
 
     const url = oauthClient.environment === 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
-
 
     oauthClient.makeApiCall({url: url + 'v3/company/' + companyID +'/companyinfo/' + companyID})
         .then(function(authResponse){

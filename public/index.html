@@ -5,7 +5,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
-    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="./css/common.css">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,7 +16,7 @@
 
     <h1>
         <a href="http://developer.intuit.com">
-            <img src="images/quickbooks_logo_horz.png" id="headerLogo">
+            <img src="./images/quickbooks_logo_horz.png" id="headerLogo">
         </a>
     </h1>
     <hr>
@@ -37,8 +37,8 @@
         <div class="form-group">
             <label for="environment">Environment</label>
             <select id="environment" class="form-control">
-            <option value="sandbox" selected="selected">Sandbox</option>
-            <option value="production">Production</option>
+                <option value="sandbox" selected="selected">Sandbox</option>
+                <option value="production">Production</option>
             </select>
         </div>
         <div class="form-group">
@@ -48,7 +48,7 @@
     </form>
     <p>Now click the <b>Connect to QuickBooks</b> button below.</p>
     <pre id="accessToken"></pre>
-    <a class="imgLink" href="#" id="authorizeUri" ><img src="images/C2QB_green_btn_lg_default.png" width="178" /></a>
+    <a class="imgLink" href="#" id="authorizeUri" ><img src="./images/C2QB_green_btn_lg_default.png" width="178" /></a>
     <button  type="button" id="retrieveToken" class="btn btn-success">Display Access Token</button>
     <button  type="button" id="refreshToken" class="btn btn-success">Refresh Token</button>
     <hr />
@@ -76,16 +76,21 @@
 <script type="text/javascript">
     (function() {
 
-        async function authorizeUri() {
+        function authorizeUri() {
 
             // Generate the authUri
             var jsonBody = {};
-            jsonBody.clientId = 'ABM90qJ9fSD29O8cGmdymFod6ddcNOhVNQBZTV5stey8feEpOL';
-            jsonBody.clientSecret = 'z7o8Ptm26m10D5x8G9M5FAzxOMcUvO0DGKu2SSf0';
-            jsonBody.environment = 'sandbox';
-            jsonBody.redirectUri = 'http://localhost:8080?action=oauth_callback';
-            window.location.href='/authUri';
+            jsonBody.clientId = $('#clientId').val();
+            jsonBody.clientSecret = $('#clientSecret').val();
+            jsonBody.environment = $('#environment').val();
+            jsonBody.redirectUri = $('#redirectUri').val();
 
+            $.get('/authUri', {json:jsonBody}, function (uri) {
+                console.log('The Auth Uris is :'+uri);
+            })
+                .then(function (authUri) {
+                    window.location=authUri;
+                });
         }
 
         function retrieveToken() {
@@ -106,31 +111,10 @@
             });
         }
 
-        async function makeAPICall() {
+        function makeAPICall() {
 
             // Generate the authUri
-            let u=new URL(window.location.href);
-            await $.get('/callback', {url:u.searchParams.get('code')}, function (uri) {
-                console.log('The Auth Uris is :'+uri);
-            })
-            .then(function (authUri) {
-                // Launch Popup using the JS window Object
-                var parameters = "location=1,width=800,height=650";
-                parameters += ",left=" + (screen.width - 800) / 2 + ",top=" + (screen.height - 650) / 2;
-                var win = window.open(authUri, 'connectPopup', parameters);
-                var pollOAuth = window.setInterval(function () {
-                    try {
-                        if (win.document.URL.indexOf("code") !== -1) {
-                            window.clearInterval(pollOAuth);
-                            win.close();
-                            location.reload();
-                        }
-                    } catch (e) {
-                        console.log(e)
-                    }
-                }, 100);
-            });
-            await $.get('/getCompanyInfo',{url:u.searchParams.get('realmId')}, function (response) {
+            $.get('/getCompanyInfo', function (response) {
                 $("#apiCall").html(JSON.stringify(response, null, 4));
             });
         }
