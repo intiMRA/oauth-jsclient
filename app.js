@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 
+
 /**
  * Require the dependencies
  * @type {*|createApplication}
@@ -12,8 +13,8 @@ const path = require('path');
 const OAuthClient = require('intuit-oauth');
 const bodyParser = require('body-parser');
 const ngrok =  (process.env.NGROK_ENABLED==="true") ? require('ngrok'):null;
-
-
+var pjson = require('./package.json');
+var os = require('os');
 /**
  * Configure View and Handlebars
  */
@@ -22,6 +23,7 @@ app.use(express.static(path.join(__dirname, '/public')));
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
 app.use(bodyParser.json());
+
 
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 
@@ -118,15 +120,142 @@ app.get('/getCompanyInfo', function(req,res){
     const companyID = oauthClient.getToken().realmId;
 
     const url = oauthClient.environment === 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
+    var Client = require('node-rest-client').Client;
+    var args={headers: {
+            "Authorization": 'Bearer ' + oauthClient.getToken().access_token,
+            'Accept': "application/json",
+            'User-Agent': 'Intuit-OAuthClient-JS'+ '_' + pjson.version + '_' + os.type() + '_' + os.release() + '_' + os.platform()
+        }
+    };
+    var client = new Client();
+    client.get(url + 'v3/company/' + companyID +'/companyinfo/' + companyID,args, function (data, response) {
+        // parsed response body as js object
+        res.send(data);
+    });
 
-    oauthClient.makeApiCall({url: url + 'v3/company/' + companyID +'/companyinfo/' + companyID})
-        .then(function(authResponse){
-            console.log("The response for API call is :"+JSON.stringify(authResponse));
-            res.send(JSON.parse(authResponse.text()));
-        })
-        .catch(function(e) {
-            console.error(e);
+    // oauthClient.makeApiCall({url: url + 'v3/company/' + companyID +'/companyinfo/' + companyID})
+    //     .then(function(authResponse){
+    //         res.send(JSON.parse(authResponse.text()));
+    //     })
+    //     .catch(function(e) {
+    //         console.error(e);
+    //     });
+});
+
+app.post('/data',async function (req,res) {
+    const companyID = oauthClient.getToken().realmId;
+    var url = oauthClient.environment === 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
+
+    var Client = require('node-rest-client').Client;
+
+    var client = new Client();
+    var argsGet={headers: {
+            "Authorization": 'Bearer ' + oauthClient.getToken().access_token,
+            'Accept': "application/json",
+            'User-Agent': 'Intuit-OAuthClient-JS'+ '_' + pjson.version + '_' + os.type() + '_' + os.release() + '_' + os.platform()
+        }
+    };
+    var syncToken=0;
+    client.get(url + 'v3/company/' + companyID +'/companyinfo/' + companyID,argsGet, function (data, response) {
+        // parsed response body as js object
+        syncToken=data.CompanyInfo.SyncToken;
+        console.log(syncToken);
+        var args = {
+            data:{
+                SyncToken: syncToken,
+                domain: "QBO",
+                LegalAddr: {
+                    City: "Mountain View",
+                    Country: "US",
+                    Line1: "2500 Garcia Ave",
+                    PostalCode: "94043",
+                    CountrySubDivisionCode: "CA",
+                    Id: 1
+                },
+                SupportedLanguages: "en",
+                CompanyName: "Larry's Bakery",
+                Country: "US",
+                CompanyAddr: {
+                    City: "Mountain View",
+                    Country: "US",
+                    Line1: "2500 Garcia Ave",
+                    PostalCode: "94043",
+                    CountrySubDivisionCode: "CA",
+                    Id: 1
+                },
+                sparse: false,
+                Id: 1,
+                WebAddr: {
+                    URI:"https://colabs.com"
+                },
+                FiscalYearStartMonth: "January",
+                CustomerCommunicationAddr: {
+                    City: "Mountain View",
+                    Country: "US",
+                    Line1: "2500 Garcia Ave",
+                    PostalCode: 94043,
+                    CountrySubDivisionCode: "CA",
+                    Id: 1
+                },
+                PrimaryPhone: {
+                    FreeFormNumber: "(650)944-4444"
+                },
+                LegalName: "Larry's Bakery",
+                CompanyStartDate: "2015-06-05",
+                Email: {
+                    Address: "donotreply@intuit.com"
+                },
+                NameValue: [
+                    {
+                        Name: "NeoEnabled",
+                        Value: true
+                    },
+                    {
+                        Name: "IndustryType",
+                        Value: "Bread and Bakery Product Manufacturing"
+                    },
+                    {
+                        Name: "IndustryCode",
+                        Value: "31181"
+                    },
+                    {
+                        Name: "SubscriptionStatus",
+                        Value: "PAID"
+                    },
+                    {
+                        Name: "OfferingSku",
+                        Value: "QuickBooks Online Plus"
+                    },
+                    {
+                        Name: "PayrollFeature",
+                        Value: true
+                    },
+                    {
+                        Name: "AccountantFeature",
+                        Value: false
+                    }
+                ],
+                MetaData: {
+                    CreateTime: "2015-06-05T13:55:54-07:00",
+                    LastUpdatedTime: "2015-07-06T08:51:50-07:00"
+                }
+            },
+            headers: {
+                "Authorization": 'Bearer ' + oauthClient.getToken().access_token,
+                'Content-Type':"application/json",
+                'Accept': "application/json",
+                'User-Agent': 'Intuit-OAuthClient-JS'+ '_' + pjson.version + '_' + os.type() + '_' + os.release() + '_' + os.platform()
+            }
+        };
+
+        client.post(url + 'v3/company/' + companyID+'/companyinfo/', args, function (data, response) {
+            // parsed response body as js object
+            console.log(JSON.stringify(data));
+            res.send(data);
         });
+    });
+// set content-type header and data as json in args parameter
+
 });
 
 /**
@@ -140,6 +269,28 @@ app.get('/disconnect', function(req,res){
 
 });
 
+
+app.post('/query', function(req,res){
+    console.log("coke",req.body);
+    const companyID = oauthClient.getToken().realmId;
+
+    const url = oauthClient.environment === 'sandbox' ? OAuthClient.environment.sandbox : OAuthClient.environment.production ;
+    var Client = require('node-rest-client').Client;
+    var args={headers: {
+            "Authorization": 'Bearer ' + oauthClient.getToken().access_token,
+            'Accept': "application/json",
+            'User-Agent': 'Intuit-OAuthClient-JS'+ '_' + pjson.version + '_' + os.type() + '_' + os.release() + '_' + os.platform()
+        }
+    };
+    var client = new Client();
+    client.get(url + 'v3/company/' + companyID +'/query?query='+req.body.q,args, function (data, response) {
+        // parsed response body as js object
+        console.log(JSON.stringify(data));
+
+        res.send(data);
+    });
+
+});
 
 
 /**
