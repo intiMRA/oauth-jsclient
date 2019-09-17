@@ -1,6 +1,25 @@
 
 $(document).ready(function(e) {
 
+    $("#edit-comp").click(()=>{
+        $('#edit').dialog('open');
+    });
+    $('#edit').dialog({
+        modal : true, autoOpen : false,
+        buttons : {
+            "Submit" : function () {
+                $.post('/data', {},function (data,response) {
+                    console.log(data);
+                    $(this).dialog('close');
+                });
+
+
+
+            },
+            "Cancel" : function () { $(this).dialog('close'); }
+        }
+    });
+
     function authorizeUri() {
 
         $.get('/authUri', function (uri) {
@@ -95,12 +114,7 @@ $(document).ready(function(e) {
         makeAPICall();
     });
 
-    document.getElementById('post').addEventListener('click', function response(e) {
-        e.preventDefault();
-        $.post('/data', {},function (data,response) {
-            console.log(data);
-        });
-    });
+
 
     document.getElementById('queryBtn').addEventListener('click',function response(e) {
         e.preventDefault();
